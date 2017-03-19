@@ -1,4 +1,5 @@
 import os
+import sys
 import urllib
 import requests
 from bs4 import BeautifulSoup
@@ -22,45 +23,63 @@ outputDirectory =   [
 
 def downloadFromUrl(originUrl, extensions, depth, directory):
     downloadCount = 0
+    baseUrl = originUrl.split("//")[-1].split("/")[0]
     urls = set()
     urls.add(originUrl)
 
-    try:
-        if not os.path.exists(directory):
-            os.makedirs(directory)
+    print("Base URL: " + baseUrl)
 
-        for i in range(depth):
-            for url in urls.copy():
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    for i in range(depth):
+        for url in urls.copy():
+            try:
                 print('Depth: ' + str(i) + '/' + str(searchDepth) + ' - Pages: ' + str(len(urls)) + ' - Downloads:  ' + str(downloadCount))
                 source_code = requests.get(url)
                 plain_text = source_code.text
                 soup = BeautifulSoup(plain_text, 'lxml')
 
                 for link in soup.findAll('a'):
-                    if link.get('href') == None:
-                        href = str(url.rsplit('/',1)[0])
-                    else :
-                        href = str(url.rsplit('/',1)[0]) + '/' + str(link.get('href'))
-
-                    if any(ext in href for ext in extensions):
-                        fileName = href.rsplit('/',1)[1]
-                        filename = fileName.decode('iso-8859-1')
-                        fileName = urllib.unquote(fileName)
-
-                        fullPath = directory + fileName
-
-                        if not os.path.exists(fullPath):
-                            urllib.urlretrieve (href, fullPath)
-                            downloadCount += 1
-                            # print(fileName)
+                    if "http" not in str(link.get('href')):
+                        if link.get('href') == None:
+                            href = str(url.rsplit('/',1)[0])
+                        else :
+                            href = str(url.rsplit('/',1)[0]) + '/' + str(link.get('href'))
+                    elif baseUrl in str(link.get('href')):
+                        href = str(link.get('href'))
                     else:
-                        urls.add(href)
-    except Exception:
-        print(url.rsplit('/',1)[0] + ' ---------- ' + link.get('href'))
-        pass
+                        continue
+
+                    if href != "":
+                        if any(ext in href for ext in extensions):
+                            fileName = href.rsplit('/',1)[1]
+                            filename = fileName.decode('iso-8859-1')
+                            fileName = urllib.unquote(fileName)
+
+                            fullPath = directory + fileName
+
+                            if not os.path.exists(fullPath):
+                                urllib.urlretrieve (href, fullPath)
+                                downloadCount += 1
+                                # print(fileName)
+                        else:
+                            urls.add(href)
+                    # print("URL to other website: " + print())
+
+            except Exception:
+                try:
+                    print(str(url.rsplit('/',1)[0]) + ' ---------- ' + str(link.get('href')))
+                except Exception:
+                    print("Could not print URL")
+                continue
 
     print('Pages visited: ' + str(len(urls)))
     print('Files downloaded: ' + str(downloadCount))
+    # print urls
+
+# urls = [sys.argv[1]]
+# outputDirectory = [sys.argv[2]]
 
 for i in range(len(urls)):
     url = urls[i]
